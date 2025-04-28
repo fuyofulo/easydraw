@@ -4,6 +4,7 @@ app.use(express.json());
 import jwt from "jsonwebtoken";
 import { middleware } from './middleware';
 import { JWT_SECRET } from '@repo/backend-common/config';
+import { CreateUserSchema } from '@repo/common/types',
 
 app.listen(4000);
 
