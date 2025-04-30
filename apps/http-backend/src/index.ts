@@ -3,6 +3,7 @@ import jwt from "jsonwebtoken";
 import { JWT_SECRET } from '@repo/backend-common/config';
 import { CreateRoomSchema, SignupSchema, SigninSchema } from '@repo/common/types';
 import { prismaClient } from '@repo/db/client';
+import { middleware } from './middleware';
 
 if(!JWT_SECRET) {
     console.log("jwt secret wasnt loaded");
@@ -72,44 +73,70 @@ app.post('/signup', async (req, res) => {
 
     // 201: Created → when user is successfully created
     res.status(201).json({
-        message: token
+        token: token
     })
 })
 
 app.post('/signin', async (req, res) => {
 
-    const data = SigninSchema.safeParse(req.body);
-    if(!data.success) {
-        res.json({
+    const data = req.body;
+    const parsedData = SigninSchema.safeParse(data);
+
+    if(!parsedData.success) {
+        res.status(400).json({
             message: "Incorrect inputs"
         })
         return;
     }
 
-    // take username and password and check
-    // return 
+    const user = await prismaClient.user.findUnique({
+        where: {
+            username: parsedData.data.username,
+            password: parsedData.data.password
 
-    const userId = 123;
-    const token = jwt.sign({
-        userId
-    }, JWT_SECRET!)
+        }
+    })
 
-    res.json({ token });
+    if(!user) {
+        res.status(404).json({
+            message: "user doesn't exists"
+        })
+        return;
+    }
+
+    const token = jwt.sign({ userId: user.id }, JWT_SECRET!);
+
+    res.status(200).json({
+        token: token
+    });
 
 })
 
-app.post('/createroom', async (req, res) => {
+app.post('/createroom', middleware, async (req, res) => {
+
+    const data = req.body;
     
-    const data = CreateRoomSchema.safeParse(req.body);
-    if(!data.success) {
+    const parsedData = CreateRoomSchema.safeParse(data);
+    if(!parsedData.success) {
         res.json({
             message: "Incorrect inputs"
         })
         return;
     }
+
+    //@ts-ignore
+    const userId = req.userId;
+
+    const room = await prismaClient.room.create({
+        data: {
+            slug: parsedData.data.name,
+            adminId: userId
+        }
+    })
+
     // create a room in the database
     res.json({
-        roomId: 123
+        roomId: room.id
     })
 
 })
