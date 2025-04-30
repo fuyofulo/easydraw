@@ -1,12 +1,12 @@
 import express from 'express';
-const app = express();
-app.use(express.json());
 import jwt from "jsonwebtoken";
 import { middleware } from './middleware';
 import { JWT_SECRET } from '@repo/backend-common/config';
-import { CreateRoomSchema, CreateUserSchema, SigninSchema } from '@repo/common/types'
+import { CreateRoomSchema, SignupSchema, SigninSchema } from '@repo/common/types';
+import { prismaClient } from '@repo/db/client';
 
-
+const app = express();
+app.use(express.json());
 app.listen(4000);
 
 app.get("/", (req, res) => {
@@ -15,23 +15,54 @@ app.get("/", (req, res) => {
     })
 })
 
-app.post('/signup', (req, res) => {
+app.post('/signup', async (req, res) => {
 
-    const data = CreateUserSchema.safeParse(req.body);
+    const data = req.body;
+    const parsedData = SignupSchema.safeParse(data);
         
-    if(!data.success) {
-        res.json({
+    // 400: Bad Request → for validation errors.
+    if(!parsedData.success) {
+        res.status(400).json({
             message: "Incorrect inputs"
+        });
+        return;
+    }
+
+
+    const existinguser = await prismaClient.user.findUnique({
+        where: {
+            email: parsedData.data.email,
+        }
+    })
+
+    // 409: Conflict → if the user already exists.
+    if(existinguser) {
+        res.status(409).json({
+            message: "user already exists"
         })
         return;
     }
 
-    res.json({
-        userId: 123
+    const user = await prismaClient.user.create({
+        email: parsedData.data.email,
+        password: parsedData.data.password,
+        username: parsedData.data.password
     })
 
-    // create user in database
+    // 500: Internal Server Error → if user creation fails unexpectedly
+    if(!user) {
+        res.status(500).json({
+            message: "error creating user"
+        })
+        return;
+    }
 
+    const token = jwt.sign({ userId: user.id }, JWT_SECRET! );
+
+    // 201: Created → when user is successfully created
+    res.status(201).json({
+        message: token
+    })
 })
 
 app.post('/signin', async (req, res) => {
