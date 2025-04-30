@@ -1,9 +1,12 @@
 import express from 'express';
 import jwt from "jsonwebtoken";
-import { middleware } from './middleware';
 import { JWT_SECRET } from '@repo/backend-common/config';
 import { CreateRoomSchema, SignupSchema, SigninSchema } from '@repo/common/types';
 import { prismaClient } from '@repo/db/client';
+
+if(!JWT_SECRET) {
+    console.log("jwt secret wasnt loaded");
+}
 
 const app = express();
 app.use(express.json());
@@ -19,9 +22,11 @@ app.post('/signup', async (req, res) => {
 
     const data = req.body;
     const parsedData = SignupSchema.safeParse(data);
+    console.log(parsedData.data);
         
     // 400: Bad Request → for validation errors.
     if(!parsedData.success) {
+        console.log(parsedData);
         res.status(400).json({
             message: "Incorrect inputs"
         });
@@ -43,10 +48,16 @@ app.post('/signup', async (req, res) => {
         return;
     }
 
+    const email = parsedData.data.email;
+    const username = parsedData.data.username;
+    const password = parsedData.data.password;
+
     const user = await prismaClient.user.create({
-        email: parsedData.data.email,
-        password: parsedData.data.password,
-        username: parsedData.data.password
+        data: {
+            email: email,
+            password: password,
+            username: username
+        }
     })
 
     // 500: Internal Server Error → if user creation fails unexpectedly
@@ -87,7 +98,7 @@ app.post('/signin', async (req, res) => {
 
 })
 
-app.post('/createroom', middleware, async (req, res) => {
+app.post('/createroom', async (req, res) => {
     
     const data = CreateRoomSchema.safeParse(req.body);
     if(!data.success) {

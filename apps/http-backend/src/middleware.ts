@@ -3,7 +3,7 @@ import jwt from "jsonwebtoken";
 import { JWT_SECRET } from '@repo/backend-common/config';
 
 if(!JWT_SECRET) {
-    throw new Error("JWT_SECRET couldnt be exported from the env file");
+    throw new Error("JWT_SECRET couldnt be exported from the backend-common/config");
 } 
 
 export function middleware(req: Request, res: Response, next: NextFunction) {
