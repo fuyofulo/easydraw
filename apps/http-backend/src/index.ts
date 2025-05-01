@@ -134,7 +134,6 @@ app.post('/createroom', middleware, async (req, res) => {
         }
     })
 
-    // create a room in the database
     res.json({
         roomId: room.id
     })
